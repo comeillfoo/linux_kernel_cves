@@ -22,8 +22,6 @@ def _deserialize(data_dir: str) -> Generator[dict, None, None]:
                     yield json.load(fp)
 
 
-RE_KERNEL = re.compile(r'^[kK]ernel$')
-
 def _is_cve_affect_linux(data: dict) -> bool:
     data = data.get('containers', None)
     if data is None: return False
@@ -36,8 +34,8 @@ def _is_cve_affect_linux(data: dict) -> bool:
         if vendor is not None and 'Linux' in vendor:
             return True
         # TODO: more expandable way of analyzing products' names
-        product = affect.get('product', None)
-        if product is not None and ('Linux kernel' in product or RE_KERNEL.match(product):
+        product = affect.get('product', '').lower()
+        if 'linux kernel' in product or product == 'kernel':
             return True
     # TODO: consider analyzing descriptions because of https://www.cve.org/CVERecord?id=CVE-2022-25265
     # possible substring: "Linux kernel"
