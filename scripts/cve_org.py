@@ -40,6 +40,7 @@ def _is_cve_affect_linux(data: dict) -> bool:
         if product is not None and ('Linux kernel' in product or RE_KERNEL.match(product):
             return True
     # TODO: consider analyzing descriptions because of https://www.cve.org/CVERecord?id=CVE-2022-25265
+    # possible substring: "Linux kernel"
     return False
 
 
