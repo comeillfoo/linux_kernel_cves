@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import os
-import tempfile
 import json
 import re
 
 from typing import Generator
-from git import Repo
 
 
 def _deserialize(data_dir: str) -> Generator[dict, None, None]:
@@ -22,23 +20,28 @@ def _deserialize(data_dir: str) -> Generator[dict, None, None]:
                     yield json.load(fp)
 
 
+LX_KERNEL_REGEX = re.compile(r'.*linux kernel.*', re.IGNORECASE)
+
 def _is_cve_affect_linux(data: dict) -> bool:
     data = data.get('containers', None)
     if data is None: return False
     data = data.get('cna', None)
     if data is None: return False
-    data = data.get('affected', None)
-    if data is None: return False
-    for affect in data:
+    affected = data.get('affected', None)
+    if affected is None: return False
+    for affect in affected:
         vendor = affect.get('vendor', None)
         if vendor is not None and 'Linux' in vendor:
             return True
-        # TODO: more expandable way of analyzing products' names
         product = affect.get('product', '').lower()
-        if 'linux kernel' in product or product == 'kernel':
+        if product == 'kernel' or LX_KERNEL_REGEX.match(product) is not None:
             return True
-    # TODO: consider analyzing descriptions because of https://www.cve.org/CVERecord?id=CVE-2022-25265
-    # possible substring: "Linux kernel"
+
+    # analyzing descriptions because of https://www.cve.org/CVERecord?id=CVE-2022-25265
+    descriptions = data.get('descriptions', [])
+    for description in descriptions:
+        if description['lang'] == 'en':
+            return LX_KERNEL_REGEX.match(description['value']) is not None
     return False
 
 

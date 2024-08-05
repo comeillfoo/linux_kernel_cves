@@ -4,7 +4,7 @@ import argparse
 import json
 import pathlib
 
-from typing import Tuple
+from typing import Tuple, Union, Callable
 from cve_org import vulnerabilities
 
 
@@ -47,40 +47,67 @@ def breaks(data: dict) -> str:
     return ''
 
 
-def cvss2(data: dict) -> dict:
-    raise NotImplementedError
+def _metric_values(values: list[str]) -> dict[str, str]:
+    return { value[0]: value for value in values }
 
+CVSS2_COMMON = _metric_values([ 'None', 'Partial', 'Complete' ])
+CVSS2_VECTOR_TABLE = {
+    'AV': ( 'Access Vector', _metric_values([ 'Network', 'Adjacent', 'Local' ]) ),
+    'AC': ( 'Access Complexity', _metric_values([ 'High', 'Medium', 'Low' ]) ),
+    'Au': ( 'Authentication', _metric_values([ 'Multiple', 'Single', 'None' ]) ),
+    'C': ( 'Confidentiality', CVSS2_COMMON ),
+    'I': ( 'Integrity', CVSS2_COMMON ),
+    'A': ( 'Availability', CVSS2_COMMON )
+}
 
-def _parse_vector_string(vector_string: str) -> list[Tuple[str, str]]:
+def _cvss2_parse_vector_string(vector_string: str) -> list[Tuple[str, str]]:
     result = []
-    common_values = { 'H': 'High', 'L': 'Low', 'N': 'None' }
-    table = {
-        'AV': (
-            'Attack Vector',
-            { 'N': 'Network', 'A': 'Adjacent', 'L': 'Local', 'P': 'Physical' }
-        ),
-        'AC': ( 'Attack Complexity', { 'H': 'High', 'L': 'Low' } ),
-        'PR': ( 'Privileges Required', common_values ),
-        'UI': ( 'User Interaction', { 'R': 'Required', 'N': 'None' } ),
-        'S': ( 'Scope', { 'C': 'Changed', 'U': 'Unchanged' } ),
-        'C': ( 'Confidentiality', common_values ),
-        'I': ( 'Integrity', common_values ),
-        'A': ( 'Availability', common_values ),
-    }
-    for part in vector_string.split('/')[1:]: # skip CVSS and version
+    for part in vector_string.split('/'):
         key, value = part.split(':')
-        name, values = table[key]
+        name, values = CVSS2_VECTOR_TABLE[key]
         result.append((name, values[value]))
     return result
 
 
-def _cvss3(cvss3: dict) -> dict:
-    items = [('score', cvss3['baseScore'])]
-    items.extend(_parse_vector_string(cvss3['vectorString']))
+CVSS3_COMMON = { 'H': 'High', 'L': 'Low', 'N': 'None' }
+CVSS3_VECTOR_TABLE = {
+    'AV': ( 'Attack Vector',
+           _metric_values([ 'Network', 'Adjacent', 'Local', 'Physical' ]) ),
+    'AC': ( 'Attack Complexity', _metric_values([ 'High', 'Low' ]) ),
+    'PR': ( 'Privileges Required', CVSS3_COMMON ),
+    'UI': ( 'User Interaction', _metric_values([ 'Required', 'None' ]) ),
+    'S': ( 'Scope', _metric_values([ 'Changed', 'Unchanged' ]) ),
+    'C': ( 'Confidentiality', CVSS3_COMMON ),
+    'I': ( 'Integrity', CVSS3_COMMON ),
+    'A': ( 'Availability', CVSS3_COMMON ),
+}
+
+def _cvss3_parse_vector_string(vector_string: str) -> list[Tuple[str, str]]:
+    result = []
+    for part in vector_string.split('/')[1:]: # skip CVSS and version
+        key, value = part.split(':')
+        name, values = CVSS3_VECTOR_TABLE[key]
+        result.append((name, values[value]))
+    return result
+
+VectorStringParser = Callable[[str], list[Tuple[str, str]]]
+
+def _cvss(cvss: dict,
+          vector_string_parser: VectorStringParser) -> dict[str, Union[str, int]]:
+    items = [('score', cvss['baseScore'])]
+    items.extend(vector_string_parser(cvss['vectorString']))
     return dict(items)
 
 
-def cvss3(data: dict) -> dict:
+def cvss2(data: dict) -> dict[str, Union[str, int]]:
+    metrics = data['containers']['cna']['metrics']
+    for metric in metrics:
+        if 'cvssV2_0' in metric:
+            return _cvss(metric, _cvss2_parse_vector_string)
+    raise FileNotFoundError
+
+
+def cvss3(data: dict) -> dict[str, Union[str, int]]:
     metrics = data['containers']['cna']['metrics']
     cvssV3_1, cvssV3_0 = None, None
 
@@ -91,9 +118,9 @@ def cvss3(data: dict) -> dict:
             cvssV3_0 = metric['cvssV3_0']
 
     if cvssV3_1 is not None:
-        return _cvss3(cvssV3_1)
+        return _cvss(cvssV3_1, _cvss3_parse_vector_string)
     if cvssV3_0 is not None:
-        return _cvss3(cvssV3_0)
+        return _cvss(cvssV3_0, _cvss3_parse_vector_string)
 
     raise FileNotFoundError
 
