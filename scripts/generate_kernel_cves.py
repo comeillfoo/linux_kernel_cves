@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
-import json
 import argparse
+import json
 import pathlib
 
 from typing import Tuple
@@ -51,8 +51,51 @@ def cvss2(data: dict) -> dict:
     raise NotImplementedError
 
 
+def _parse_vector_string(vector_string: str) -> list[Tuple[str, str]]:
+    result = []
+    common_values = { 'H': 'High', 'L': 'Low', 'N': 'None' }
+    table = {
+        'AV': (
+            'Attack Vector',
+            { 'N': 'Network', 'A': 'Adjacent', 'L': 'Local', 'P': 'Physical' }
+        ),
+        'AC': ( 'Attack Complexity', { 'H': 'High', 'L': 'Low' } ),
+        'PR': ( 'Privileges Required', common_values ),
+        'UI': ( 'User Interaction', { 'R': 'Required', 'N': 'None' } ),
+        'S': ( 'Scope', { 'C': 'Changed', 'U': 'Unchanged' } ),
+        'C': ( 'Confidentiality', common_values ),
+        'I': ( 'Integrity', common_values ),
+        'A': ( 'Availability', common_values ),
+    }
+    for part in vector_string.split('/')[1:]: # skip CVSS and version
+        key, value = part.split(':')
+        name, values = table[key]
+        result.append((name, values[value]))
+    return result
+
+
+def _cvss3(cvss3: dict) -> dict:
+    items = [('score', cvss3['baseScore'])]
+    items.extend(_parse_vector_string(cvss3['vectorString']))
+    return dict(items)
+
+
 def cvss3(data: dict) -> dict:
-    raise NotImplementedError
+    metrics = data['containers']['cna']['metrics']
+    cvssV3_1, cvssV3_0 = None, None
+
+    for metric in metrics:
+        if 'cvssV3_1' in metric:
+            cvssV3_1 = metric['cvssV3_1']
+        elif 'cvssV3_0' in metric:
+            cvssV3_0 = metric['cvssV3_0']
+
+    if cvssV3_1 is not None:
+        return _cvss3(cvssV3_1)
+    if cvssV3_0 is not None:
+        return _cvss3(cvssV3_0)
+
+    raise FileNotFoundError
 
 
 def cwe(data: dict) -> str:
@@ -68,6 +111,9 @@ def fixes(data: dict) -> str:
 
 
 def nvd_text(data: dict) -> str:
+    for desc in data['containers']['cna']['descriptions']:
+        if desc['lang'] == 'en':
+            return desc['value']
     return ''
 
 
@@ -95,6 +141,32 @@ def cveorg2kernelcve(data: dict) -> Tuple[str, dict]:
                                         map(make_item_cb, fields))))
 
 
+def dump_item(depth: int, key: str, value) -> str:
+    result = ''
+    for _ in range(depth):
+        result += '    '
+    result += json.dumps(key) + ': '
+    if isinstance(value, dict):
+        result += dump_dict(depth, value)
+    else:
+        result += json.dumps(value)
+    return result
+
+
+def dump_dict(depth: int, data: dict) -> str:
+    result = '{\n'
+    is_first_dumped = False
+    for k, v in data.items():
+        if is_first_dumped:
+            result += ',\n'
+        result += dump_item(depth + 1, k, v)
+        is_first_dumped = True
+    result += '\n'
+    for _ in range(depth):
+        result += '    '
+    return result + '}'
+
+
 def main() -> int:
     args = argparser().parse_args()
 
@@ -106,7 +178,7 @@ def main() -> int:
         if is_first_printed:
             print(',', file=fp)
         id, data = cveorg2kernelcve(vuln)
-        print(f'\t"{id}": {json.dumps(data)}', end='', file=fp)
+        print(f'    "{id}": {dump_dict(1, data)}', end='', file=fp)
         is_first_printed = True
     print('}', file=fp)
 
@@ -115,4 +187,8 @@ def main() -> int:
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print('Terminated')
+        sys.exit(1)
