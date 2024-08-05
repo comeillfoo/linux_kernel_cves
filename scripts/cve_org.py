@@ -34,7 +34,7 @@ def _is_cve_affect_linux(data: dict) -> bool:
         if vendor is not None and 'Linux' in vendor:
             return True
         product = affect.get('product', None)
-        if product is not None and 'Linux kernel' in product:
+        if product is not None and ('Linux kernel' in product or product == 'kernel'):
             return True
     return False
 
