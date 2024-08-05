@@ -33,9 +33,11 @@ def _is_cve_affect_linux(data: dict) -> bool:
         vendor = affect.get('vendor', None)
         if vendor is not None and 'Linux' in vendor:
             return True
+        # TODO: more expandable way of analyzing products' names
         product = affect.get('product', None)
         if product is not None and ('Linux kernel' in product or product == 'kernel'):
             return True
+    # TODO: consider analyzing descriptions because of https://www.cve.org/CVERecord?id=CVE-2022-25265
     return False
 
 
