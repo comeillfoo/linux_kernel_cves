@@ -136,12 +136,19 @@ def cwe(data: dict) -> str:
 def fixes(data: dict) -> str:
     return ''
 
+def modified(data: dict) -> str:
+    return data.get('cveMetadata', { 'dateUpdated': '' })['dateUpdated']
+
 
 def nvd_text(data: dict) -> str:
     for desc in data['containers']['cna']['descriptions']:
         if desc['lang'] == 'en':
             return desc['value']
     return ''
+
+
+def published(data: dict) -> str:
+    return data.get('cveMetadata', { 'dateUpdated': '' })['datePublished']
 
 
 def ref_urls(data: dict) -> dict[str, str]:
@@ -160,8 +167,8 @@ def make_item_cb(constructor):
 
 def cveorg2kernelcve(data: dict) -> Tuple[str, dict]:
     fields = [
-        affected_versions, backport, breaks, cvss2, cvss3, cwe, fixes, nvd_text,
-        ref_urls
+        affected_versions, backport, breaks, cvss2, cvss3, cwe, fixes, modified,
+        nvd_text, published, ref_urls
     ]
     return cveId(data), dict(filter(lambda item: len(item) == 2,
                                     map(lambda apply: apply(data),
