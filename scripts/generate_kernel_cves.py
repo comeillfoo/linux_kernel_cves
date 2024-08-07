@@ -36,14 +36,14 @@ def cveId(data: dict) -> str:
     return data['cveMetadata']['cveId']
 
 
-def affected_versions(data: dict) -> str:
+def affected_versions(data: dict) -> Union[str, list[str]]:
     return 'unk to unk'
 
 def backport(data: dict) -> bool:
     return False
 
 
-def breaks(data: dict) -> str:
+def breaks(data: dict) -> Union[str, list[str]]:
     return ''
 
 
@@ -133,10 +133,11 @@ def cwe(data: dict) -> str:
     return 'Other'
 
 
-def fixes(data: dict) -> str:
+def fixes(data: dict) -> Union[str, list[str]]:
     return ''
 
-def modified(data: dict) -> str:
+
+def last_modified(data: dict) -> str:
     return data.get('cveMetadata', { 'dateUpdated': '' })['dateUpdated']
 
 
@@ -167,8 +168,8 @@ def make_item_cb(constructor):
 
 def cveorg2kernelcve(data: dict) -> Tuple[str, dict]:
     fields = [
-        affected_versions, backport, breaks, cvss2, cvss3, cwe, fixes, modified,
-        nvd_text, published, ref_urls
+        affected_versions, backport, breaks, cvss2, cvss3, cwe, fixes,
+        last_modified, nvd_text, published, ref_urls
     ]
     return cveId(data), dict(filter(lambda item: len(item) == 2,
                                     map(lambda apply: apply(data),
