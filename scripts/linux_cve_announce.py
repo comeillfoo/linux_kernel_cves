@@ -16,6 +16,9 @@ def download_mbox(cve_id: str) -> str:
 
 
 def vulnerability(cve_id: str) -> dict:
+    # TODO: consider using GET-requests to
+    # https://git.kernel.org/pub/scm/linux/security/vulns.git/plain/cve/published/2024/CVE-2024-42258.json,
+    # instead of bombarding with the POSTs
     mbox = download_mbox(cve_id)
     # TODO: parse mail
     return dict()
