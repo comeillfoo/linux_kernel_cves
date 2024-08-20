@@ -3,11 +3,14 @@ import sys
 import argparse
 import json
 import pathlib
+import logging
 
 
 from cve_org import CVEorg
 from linux_cve_announce import LinuxCveAnnounce
 
+
+logging.getLogger().setLevel(logging.DEBUG)
 
 def argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser()
@@ -56,7 +59,7 @@ def main() -> int:
 
     cve_org = CVEorg.from_bare_path(args.cvelistV5)
     # lx_cve_announce = LinuxCveAnnounce.from_bare_path(args.vulns)
-    fp = sys.stdout if args.output == '-' else open(args.output)
+    fp = sys.stdout if args.output == '-' else open(args.output, 'w', encoding='utf-8')
 
     is_first_printed = False
     print('{', file=fp)
@@ -67,7 +70,7 @@ def main() -> int:
         print(f'    "{kernel_cve.id}": {dump_dict(1, kernel_cve.to_dict())}',
               end='', file=fp)
         is_first_printed = True
-    print('}', file=fp)
+    print('\n}', file=fp)
 
     fp.close()
     return 0

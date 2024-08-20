@@ -81,7 +81,7 @@ class CVEorg(GitVulnerabilitiesSource):
 
 
     @classmethod
-    def to_kernel_cve(self, vuln: dict) -> KernelCve:
+    def to_kernel_cve(cls, vuln: dict) -> KernelCve:
         return KernelCve.from_dict(vuln)
 
 

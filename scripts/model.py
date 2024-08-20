@@ -65,7 +65,7 @@ class KernelCve:
 
 
     @classmethod
-    def from_dict(vuln: dict):
+    def from_dict(cls, vuln: dict):
         return KernelCve(cveId(vuln),
                          affected_versions(vuln),
                          backport(vuln),
@@ -117,18 +117,15 @@ def cmt_msg(vuln: dict) -> Optional[str]:
 
 
 def cvss2(vuln: dict) -> Optional[CVSSType]:
-    metrics = vuln['containers']['cna']['metrics']
-    for metric in metrics:
+    for metric in vuln['containers']['cna'].get('metrics', []):
         if 'cvssV2_0' in metric:
-            return _cvss(metric, _cvss2_parse_vector_string)
+            return _cvss(metric['cvssV2_0'], _cvss2_parse_vector_string)
     return None
 
 
 def cvss3(vuln: dict) -> Optional[CVSSType]:
-    metrics = vuln['containers']['cna']['metrics']
     cvssV3_1, cvssV3_0 = None, None
-
-    for metric in metrics:
+    for metric in vuln['containers']['cna'].get('metrics', []):
         if 'cvssV3_1' in metric:
             cvssV3_1 = metric['cvssV3_1']
         elif 'cvssV3_0' in metric:
