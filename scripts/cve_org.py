@@ -1,33 +1,33 @@
 #!/usr/bin/env python3
 import os
+from typing import Generator
 import json
 import re
+import logging
 
-from typing import Generator
+from git import Repo
+
+from common import GitVulnerabilitiesSource, is_json, listdir_against
+from model import KernelCve
 
 
-def _deserialize(data_dir: str) -> Generator[dict, None, None]:
-    for cve_year in os.listdir(data_dir):
-        cve_year = os.path.join(data_dir, cve_year)
-        if not os.path.isdir(cve_year): continue
-        for cve_id_prefix in os.listdir(cve_year):
-            cve_id_prefix = os.path.join(cve_year, cve_id_prefix)
-            if not os.path.isdir(cve_id_prefix): continue
-            for single_cve_json in os.listdir(cve_id_prefix):
-                single_cve_json = os.path.join(cve_id_prefix, single_cve_json)
-                if not single_cve_json.endswith('.json'): continue
-                with open(single_cve_json) as fp:
-                    yield json.load(fp)
+def list_jsons(storage: str) -> Generator[str, None, None]:
+    cves = os.path.join(storage, 'cves')
+    for year in filter(os.path.isdir, listdir_against(cves)):
+        for cve_id_prefix in filter(os.path.isdir, listdir_against(year)):
+            for cve_json in filter(is_json, listdir_against(cve_id_prefix)):
+                yield cve_json
 
 
 LX_KERNEL_REGEX = re.compile(r'.*linux kernel.*', re.IGNORECASE)
 
-def _is_cve_affect_linux(data: dict) -> bool:
-    data = data.get('containers', None)
-    if data is None: return False
-    data = data.get('cna', None)
-    if data is None: return False
-    affected = data.get('affected', None)
+
+def is_cve_affect_linux(vuln: dict) -> bool:
+    vuln = vuln.get('containers', None)
+    if vuln is None: return False
+    vuln = vuln.get('cna', None)
+    if vuln is None: return False
+    affected = vuln.get('affected', None)
     if affected is None: return False
     for affect in affected:
         vendor = affect.get('vendor', None)
@@ -38,20 +38,59 @@ def _is_cve_affect_linux(data: dict) -> bool:
             return True
 
     # analyzing descriptions because of https://www.cve.org/CVERecord?id=CVE-2022-25265
-    descriptions = data.get('descriptions', [])
-    for description in descriptions:
-        if description['lang'] == 'en':
-            return LX_KERNEL_REGEX.match(description['value']) is not None
+    for description in vuln.get('descriptions', []):
+        if description.get('lang', '') == 'en':
+            return LX_KERNEL_REGEX.match(description.get('value', '')) is not None
     return False
 
 
-def _get_linux_kernel_cves(data_dir: str) -> Generator[dict, None, None]:
-    for data in _deserialize(data_dir):
-        if _is_cve_affect_linux(data):
-            yield data
+def read_json(json_path: str) -> dict:
+    try:
+        with open(json_path, encoding='utf-8') as fp:
+            return json.load(fp)
+    except Exception as e:
+        logging.fatal('failed to parse flaw at %s', json_path,
+                      exc_info=e)
+    return {}
 
 
-def vulnerabilities(storage: str) -> Generator[dict, None, None]:
-    cves = os.path.join(storage, 'cves')
-    return _get_linux_kernel_cves(cves)
+class CVEorg(GitVulnerabilitiesSource):
+    def __init__(self, repository: Repo):
+        super().__init__(repository)
+        self.cves_index = {}
 
+    @classmethod
+    def repo_source(cls) -> str:
+        return 'https://github.com/CVEProject/cvelistV5.git'
+
+
+    def index(self) -> dict[str, str]:
+        '''Indexes kernel related vulnerabilities
+        '''
+        if self.cves_index:
+            return self.cves_index
+
+        total = 0
+        logging.debug('Indexing vulnerabilities...')
+        for json_path in list_jsons(self.repo_workdir):
+            cveid = os.path.basename(json_path).strip('.json').strip()
+            self.cves_index[cveid] = json_path
+            total += 1
+        logging.debug('Indexed %d vulnerabilities', total)
+        return self.cves_index
+
+
+    @classmethod
+    def to_kernel_cve(self, vuln: dict) -> KernelCve:
+        return KernelCve.from_dict(vuln)
+
+
+    def to_kernel_cves(self) -> Generator[KernelCve, None, None]:
+        for json_path in self.index().values():
+            try:
+                raw_vuln = read_json(json_path)
+                if is_cve_affect_linux(raw_vuln):
+                    yield self.to_kernel_cve(raw_vuln)
+            except Exception as e:
+                logging.error('failed to parse/convert vulnerability at %s',
+                              json_path, exc_info=e)
