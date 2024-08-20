@@ -86,11 +86,14 @@ class CVEorg(GitVulnerabilitiesSource):
 
 
     def to_kernel_cves(self) -> Generator[KernelCve, None, None]:
+        total = 0
         for json_path in self.index().values():
             try:
                 raw_vuln = read_json(json_path)
                 if is_cve_affect_linux(raw_vuln):
+                    total += 1
                     yield self.to_kernel_cve(raw_vuln)
             except Exception as e:
                 logging.error('failed to parse/convert vulnerability at %s',
                               json_path, exc_info=e)
+        logging.info('successfully converted %d vulnerabilities', total)
