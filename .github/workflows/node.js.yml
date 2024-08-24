@@ -9,7 +9,7 @@ on:
      - master
   pull_request:
     branches:
-     - master
+     - master feature-deploy-to-gh-pages
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
