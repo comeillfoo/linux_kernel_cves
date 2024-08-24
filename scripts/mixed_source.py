@@ -56,16 +56,17 @@ class MixedSource(SomeVulnerabilitiesSource):
                 kernel_cve = next(generators[i], None)
                 if kernel_cve is None:
                     is_empty = clear_bit(is_empty, i)
-                    logging.info('source[%d] is exhausted', i)
+                    logging.debug('source[%d] is exhausted', i)
                     continue
                 _id = kernel_cve.id
                 buffer_dict[_id] = mix_kernel_cves(kernel_cve,
                                                 buffer_dict.get(_id, None))
                 curr_masks[_id] = set_bit(curr_masks.get(_id, 0), i)
+                logging.debug('%s: got from source[%d]', _id, i)
                 if is_same_bitmask(curr_masks[_id],
                                 self.masks_index.get(_id, curr_masks[_id]),
                                 self.sources_mask):
-                    logging.debug('no more data[%s] is expected from sources - '
+                    logging.debug('%s: no more data is expected from sources - '
                                   'yield', _id)
                     temp = buffer_dict[_id]
                     del buffer_dict[_id]

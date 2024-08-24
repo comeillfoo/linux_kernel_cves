@@ -8,6 +8,7 @@ import logging
 
 from cve_org import CVEorg
 from linux_cve_announce import LinuxCveAnnounce
+from mixed_source import MixedSource
 
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -58,12 +59,14 @@ def main() -> int:
     args = argparser().parse_args()
 
     cve_org = CVEorg.from_bare_path(args.cvelistV5)
-    # lx_cve_announce = LinuxCveAnnounce.from_bare_path(args.vulns)
+    lx_cve_announce = LinuxCveAnnounce.from_bare_path(args.vulns)
+    mixed_source = MixedSource([cve_org, lx_cve_announce])
+
     fp = sys.stdout if args.output == '-' else open(args.output, 'w', encoding='utf-8')
 
     is_first_printed = False
     print('{', file=fp)
-    for kernel_cve in cve_org.to_kernel_cves():
+    for kernel_cve in mixed_source.to_kernel_cves():
         if is_first_printed:
             print(',', file=fp)
 

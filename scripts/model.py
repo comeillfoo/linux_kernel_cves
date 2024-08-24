@@ -45,7 +45,7 @@ class KernelCve:
     @property
     def ref_urls(self) -> dict[str, str]:
         '''Reference URLs property'''
-        return { src: tmplt % self.id for src, tmplt in _REF_URLS_TEMPLATES.items() }
+        return { src: tmplt % self.id.lstrip('CVE-') for src, tmplt in _REF_URLS_TEMPLATES.items() }
 
 
     def to_dict(self) -> dict[str, dict]:
@@ -85,8 +85,10 @@ class KernelCve:
 
 def cveId(vuln: dict) -> str:
     assert 'cveMetadata' in vuln
-    assert 'cveId' in vuln['cveMetadata']
-    return vuln['cveMetadata']['cveId']
+    for key, value in vuln['cveMetadata'].items():
+        if key.lower() == 'cveid': # cause e.g. CVE-2021-46982 use 'cveID' as id
+            return value
+    return 'unknown'
 
 
 def affected_versions(vuln: dict) -> MultipleOrSingleStr:
