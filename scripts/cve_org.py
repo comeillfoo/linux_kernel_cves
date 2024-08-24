@@ -7,7 +7,7 @@ import logging
 
 from git import Repo
 
-from common import GitVulnerabilitiesSource, is_json, listdir_against
+from common import GitBasedVulnerabilitiesSource, is_json, listdir_against
 from model import KernelCve
 
 
@@ -54,7 +54,7 @@ def read_json(json_path: str) -> dict:
     return {}
 
 
-class CVEorg(GitVulnerabilitiesSource):
+class CVEorg(GitBasedVulnerabilitiesSource):
     def __init__(self, repository: Repo):
         super().__init__(repository)
         self.cves_index = {}
@@ -78,6 +78,10 @@ class CVEorg(GitVulnerabilitiesSource):
             total += 1
         logging.debug('Indexed %d vulnerabilities', total)
         return self.cves_index
+
+
+    def identifiers(self) -> set[str]:
+        return set(self.index().keys())
 
 
     @classmethod

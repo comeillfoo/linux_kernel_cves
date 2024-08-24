@@ -189,3 +189,11 @@ def vendor_specific(vuln: dict) -> Optional[bool]:
 
 def rejected(vuln: dict) -> Optional[bool]:
     return None
+
+
+def mix_kernel_cves(self: KernelCve, other: Optional[KernelCve]) -> KernelCve:
+    if other is None:
+        return self
+
+    # TODO: use data from other instance of KernelCve
+    return self

@@ -8,7 +8,7 @@ from git import Repo
 import requests
 
 
-from common import GitVulnerabilitiesSource, is_json, listdir_against
+from common import GitBasedVulnerabilitiesSource, is_json, listdir_against
 from model import KernelCve
 
 
@@ -31,7 +31,7 @@ def list_jsons(storage: str) -> Generator[Tuple[str, str], None, None]:
                 yield category, vuln
 
 
-class LinuxCveAnnounce(GitVulnerabilitiesSource):
+class LinuxCveAnnounce(GitBasedVulnerabilitiesSource):
     def __init__(self, repository: Repo):
         super().__init__(repository)
         self.cves_index = {}
@@ -56,6 +56,10 @@ class LinuxCveAnnounce(GitVulnerabilitiesSource):
             total += 1
         logging.debug('Indexed %d CVEs', total)
         return self.cves_index
+
+
+    def identifiers(self) -> set[str]:
+        return set(self.index().keys())
 
 
     @classmethod
