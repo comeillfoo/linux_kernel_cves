@@ -6,7 +6,7 @@ name: Node.js CI Master
 on:
   push:
     branches:
-     - master
+     - master feature-deploy-to-gh-pages
   pull_request:
     branches:
      - master feature-deploy-to-gh-pages
