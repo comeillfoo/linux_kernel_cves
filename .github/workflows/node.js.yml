@@ -6,10 +6,12 @@ name: Node.js CI Master
 on:
   push:
     branches:
-     - master feature-deploy-to-gh-pages
+     - master
+     - feature-deploy-to-gh-pages
   pull_request:
     branches:
-     - master feature-deploy-to-gh-pages
+     - master
+     - feature-deploy-to-gh-pages
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
