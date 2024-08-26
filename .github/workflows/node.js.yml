@@ -33,17 +33,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    # strategy:
-    #   matrix:
-    #     node-version: [16.x]
+    strategy:
+      matrix:
+        node-version: [20.x]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
     - uses: actions/checkout@v4
-    - name: Use Node.js 16.x # ${{ matrix.node-version }}
+    - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
-        node-version: 16.x # ${{ matrix.node-version }}
+        node-version: ${{ matrix.node-version }}
         cache: 'npm'
         cache-dependency-path: ui/package-lock.json
     - run: npm ci
