@@ -55,8 +55,8 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        # Upload only ui folder
-        path: './ui'
+        # Upload only ui/dist folder
+        path: './ui/dist'
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
