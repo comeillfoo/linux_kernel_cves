@@ -6,7 +6,7 @@ import four from '@/components/four'
 Vue.use(Router)
 
 export default new Router({
-  base: '/linux_kernel_cves',
+  base: '/linux_kernel_cves/',
   mode: 'history',
   routes: [
     {
